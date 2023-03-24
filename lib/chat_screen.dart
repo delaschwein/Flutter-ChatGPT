@@ -109,7 +109,7 @@ class _ChatScreenState extends State<ChatScreen> {
           duration: Duration(milliseconds: 500), curve: Curves.easeOut);
     }
 
-    SchedulerBinding.instance!.addPostFrameCallback((_) {
+    SchedulerBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
     });
 
