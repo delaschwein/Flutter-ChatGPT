@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        title: 'My App',
+        title: 'Chat GPT',
         home: MyHomePage(),
         themeMode: ThemeMode.dark,
         theme: ThemeData.dark().copyWith(
