@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:http/http.dart' as http;
 import 'package:chat_gpt/chat.dart';
 import 'package:chat_gpt/database.dart';
@@ -14,10 +15,15 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'My App',
-      home: MyHomePage(),
-      theme: ThemeData.dark(),
-    );
+        title: 'My App',
+        home: MyHomePage(),
+        themeMode: ThemeMode.dark,
+        theme: ThemeData.dark().copyWith(
+          scaffoldBackgroundColor: Color(0xff161c23),
+          appBarTheme: AppBarTheme(
+            backgroundColor: Color(0xff161c23),
+          ),
+        ));
   }
 }
 
@@ -73,11 +79,18 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+
+
+
+
   @override
   Widget build(BuildContext context) {
+    ScrollController _scrollController = ScrollController();
+
     return Scaffold(
       appBar: AppBar(
         title: Text('My App'),
+        backgroundColor: Color(0xff161c23),
       ),
       body: PageView(
         controller: _pageController,
@@ -85,6 +98,7 @@ class _MyHomePageState extends State<MyHomePage> {
         children: [
           ListView.builder(
             itemCount: _chats.length,
+            controller: _scrollController,
             itemBuilder: (context, index) {
               Chat chat = _chats[index];
 
@@ -94,7 +108,10 @@ class _MyHomePageState extends State<MyHomePage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => ChatScreen(chatId: chat.id, APIKey: _apiController.text),
+                        builder: (context) => ChatScreen(
+                            chatId: chat.id,
+                            APIKey: _apiController.text,
+                            createdAt: chat.createdAt),
                       ),
                     );
                   },
@@ -123,13 +140,15 @@ class _MyHomePageState extends State<MyHomePage> {
               child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              TextField(
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(),
-                  labelText: 'API Key',
-                ),
-                controller: _apiController,
-              ),
+              Container(
+                  margin: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  child: TextField(
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: 'API Key',
+                    ),
+                    controller: _apiController,
+                  )),
               IconButton(
                   onPressed: () async {
                     String APIKey = _apiController.text;
@@ -141,34 +160,48 @@ class _MyHomePageState extends State<MyHomePage> {
                     ));
                   },
                   icon: Icon(Icons.save)),
-              ElevatedButton(
-                onPressed: () async {
-                  try {
-                    http.Response response = await http.get(test_url, headers: {
-                      'Authorization': 'Bearer ${_apiController.text}'
-                    });
-                    int status = response.statusCode;
+              Container(
+                height: 50,
+                child: ElevatedButton(
+                  style: ButtonStyle(
+                    backgroundColor:
+                        MaterialStateColor.resolveWith((states) => Colors.teal),
+                    shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+                      RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25.0),
+                      ),
+                    ),
+                  ),
+                  onPressed: () async {
+                    try {
+                      http.Response response = await http.get(test_url,
+                          headers: {
+                            'Authorization': 'Bearer ${_apiController.text}'
+                          });
+                      int status = response.statusCode;
 
-                    status == 200
-                        ? ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text('Server is online'),
-                          ))
-                        : ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text('Error: $status'),
-                          ));
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('Error: $e'),
-                    ));
-                  }
-                },
-                child: Text('Check API Status'),
-              ),
+                      status == 200
+                          ? ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text('Server is online'),
+                            ))
+                          : ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text('Error: $status'),
+                            ));
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text('Error: $e'),
+                      ));
+                    }
+                  },
+                  child: Text('Check API Status'),
+                ),
+              )
             ],
           )),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Color(0xff1b242f),
         currentIndex: _selectedIndex,
         onTap: _onNavItemTapped,
         items: [
@@ -182,25 +215,78 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: CustomFab(
+        callback: _getChatsFromDatabase,
+        apiController: _apiController,
+        scrollController: _scrollController,)
+    );
+  }
+}
+
+
+class CustomFab extends StatefulWidget {
+  final Function callback;
+  final TextEditingController apiController;
+  final ScrollController scrollController;
+  
+  CustomFab({required this.callback, required this.apiController, required this.scrollController});
+
+  @override
+  _CustomFabState createState() => _CustomFabState();
+}
+
+class _CustomFabState extends State<CustomFab> {
+  final uuid = Uuid();
+
+  bool isVisible = true;
+
+  @override
+  void initState() {
+    widget.scrollController.addListener(() {
+      if (widget.scrollController.position.userScrollDirection ==
+          ScrollDirection.reverse) {
+        if (isVisible) {
+          setState(() {
+            isVisible = false;
+          });
+        }
+      }
+      if (widget.scrollController.position.userScrollDirection ==
+          ScrollDirection.forward) {
+        if (!isVisible) {
+          setState(() {
+            isVisible = true;
+          });
+        }
+      }
+    });
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return FloatingActionButton.extended(
+          isExtended: isVisible,
           onPressed: () async {
             String chatId = uuid.v4();
+            int createdAt = DateTime.now().toUtc().millisecondsSinceEpoch;
             final newChat = Chat(
               id: chatId,
-              createdAt: DateTime.now().millisecondsSinceEpoch,
+              createdAt: createdAt,
             );
             await DatabaseProvider.addChat(newChat);
-            await _getChatsFromDatabase();
+            await widget.callback();
 
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => ChatScreen(chatId: chatId, APIKey: _apiController.text),
+                builder: (context) => ChatScreen(
+                    chatId: chatId,
+                    APIKey: widget.apiController.text,
+                    createdAt: createdAt),
               ),
             );
           },
           label: Text('New Chat'),
-          icon: Icon(Icons.add)),
-    );
+          icon: Icon(Icons.add));
   }
 }
