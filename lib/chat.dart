@@ -1,5 +1,3 @@
-import 'package:chat_gpt/message.dart';
-
 class Chat {
   final String id;
   final int createdAt;

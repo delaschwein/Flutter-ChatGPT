@@ -8,19 +8,21 @@ import 'package:chat_gpt/chat_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
         title: 'Chat GPT',
-        home: MyHomePage(),
+        home: const MyHomePage(),
         themeMode: ThemeMode.dark,
         theme: ThemeData.dark().copyWith(
-          scaffoldBackgroundColor: Color(0xff161c23),
-          appBarTheme: AppBarTheme(
+          scaffoldBackgroundColor: const Color(0xff161c23),
+          appBarTheme: const AppBarTheme(
             backgroundColor: Color(0xff161c23),
           ),
         ));
@@ -28,19 +30,20 @@ class MyApp extends StatelessWidget {
 }
 
 class MyHomePage extends StatefulWidget {
+  const MyHomePage({super.key});
+
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  MyHomePageState createState() => MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class MyHomePageState extends State<MyHomePage> {
   int _selectedIndex = 0;
-  PageController _pageController = PageController(initialPage: 0);
+  final PageController _pageController = PageController(initialPage: 0);
   List<Chat> _chats = [];
-  final uuid = Uuid();
-  TextEditingController _apiController = TextEditingController();
+  final uuid = const Uuid();
+  final TextEditingController _apiController = TextEditingController();
 
-  Uri test_url =
-      Uri(scheme: 'https', host: 'api.openai.com', path: 'v1/models');
+  Uri testUrl = Uri(scheme: 'https', host: 'api.openai.com', path: 'v1/models');
 
   @override
   void initState() {
@@ -79,169 +82,177 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-
-
-
-
   @override
   Widget build(BuildContext context) {
-    ScrollController _scrollController = ScrollController();
+    ScrollController scrollController = ScrollController();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('My App'),
-        backgroundColor: Color(0xff161c23),
-      ),
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: _onPageChanged,
-        children: [
-          ListView.builder(
-            itemCount: _chats.length,
-            controller: _scrollController,
-            itemBuilder: (context, index) {
-              Chat chat = _chats[index];
+        appBar: AppBar(
+          title: const Text('My App'),
+          backgroundColor: const Color(0xff161c23),
+        ),
+        body: PageView(
+          controller: _pageController,
+          onPageChanged: _onPageChanged,
+          children: [
+            ListView.builder(
+              itemCount: _chats.length,
+              controller: scrollController,
+              itemBuilder: (context, index) {
+                Chat chat = _chats[index];
 
-              return ListTile(
-                  title: Text(chat.id),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ChatScreen(
-                            chatId: chat.id,
-                            APIKey: _apiController.text,
-                            createdAt: chat.createdAt),
-                      ),
-                    );
-                  },
-                  onLongPress: () async {
-                    await DatabaseProvider.deleteChat(chat.id);
-                    setState(() {
-                      _chats.removeAt(index);
-                    });
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('Item deleted'),
-                      action: SnackBarAction(
-                        label: 'Undo',
-                        onPressed: () async {
-                          setState(() {
-                            _chats.insert(index, chat);
-                          });
-                          await DatabaseProvider.addChat(chat);
-                          await _getChatsFromDatabase();
-                        },
-                      ),
-                    ));
-                  });
-            },
-          ),
-          Center(
-              child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                  margin: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'API Key',
-                    ),
-                    controller: _apiController,
-                  )),
-              IconButton(
-                  onPressed: () async {
-                    String APIKey = _apiController.text;
-                    SharedPreferences prefs =
-                        await SharedPreferences.getInstance();
-                    await prefs.setString('api_key', APIKey);
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('API Key saved'),
-                    ));
-                  },
-                  icon: Icon(Icons.save)),
-              Container(
-                height: 50,
-                child: ElevatedButton(
-                  style: ButtonStyle(
-                    backgroundColor:
-                        MaterialStateColor.resolveWith((states) => Colors.teal),
-                    shape: MaterialStateProperty.all<RoundedRectangleBorder>(
-                      RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25.0),
-                      ),
-                    ),
-                  ),
-                  onPressed: () async {
-                    try {
-                      http.Response response = await http.get(test_url,
-                          headers: {
-                            'Authorization': 'Bearer ${_apiController.text}'
-                          });
-                      int status = response.statusCode;
+                return ListTile(
+                    title: Text(chat.id),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ChatScreen(
+                              chatId: chat.id,
+                              apiKey: _apiController.text,
+                              createdAt: chat.createdAt),
+                        ),
+                      );
+                    },
+                    onLongPress: () async {
+                      await DatabaseProvider.deleteChat(chat.id);
+                      if (!mounted) return;
 
-                      status == 200
-                          ? ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content: Text('Server is online'),
-                            ))
-                          : ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content: Text('Error: $status'),
-                            ));
-                    } catch (e) {
+                      setState(() {
+                        _chats.removeAt(index);
+                      });
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Text('Error: $e'),
+                        content: const Text('Item deleted'),
+                        action: SnackBarAction(
+                          label: 'Undo',
+                          onPressed: () async {
+                            setState(() {
+                              _chats.insert(index, chat);
+                            });
+                            await DatabaseProvider.addChat(chat);
+                            await _getChatsFromDatabase();
+                          },
+                        ),
                       ));
-                    }
-                  },
-                  child: Text('Check API Status'),
-                ),
-              )
-            ],
-          )),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Color(0xff1b242f),
-        currentIndex: _selectedIndex,
-        onTap: _onNavItemTapped,
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat),
-            label: 'Chats',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
-      ),
-      floatingActionButton: CustomFab(
-        callback: _getChatsFromDatabase,
-        apiController: _apiController,
-        scrollController: _scrollController,)
-    );
+                    });
+              },
+            ),
+            Center(
+                child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                    margin: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 10),
+                    child: TextField(
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'API Key',
+                      ),
+                      controller: _apiController,
+                    )),
+                IconButton(
+                    onPressed: () async {
+                      String apiKey = _apiController.text;
+                      SharedPreferences prefs =
+                          await SharedPreferences.getInstance();
+
+                      await prefs.setString('api_key', apiKey);
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('API Key saved'),
+                      ));
+                    },
+                    icon: const Icon(Icons.save)),
+                SizedBox(
+                  height: 50,
+                  child: ElevatedButton(
+                    style: ButtonStyle(
+                      backgroundColor: MaterialStateColor.resolveWith(
+                          (states) => Colors.teal),
+                      shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+                        RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25.0),
+                        ),
+                      ),
+                    ),
+                    onPressed: () async {
+                      try {
+                        http.Response response = await http.get(testUrl,
+                            headers: {
+                              'Authorization': 'Bearer ${_apiController.text}'
+                            });
+
+                        if (!mounted) return;
+                        int status = response.statusCode;
+                        status == 200
+                            ? ScaffoldMessenger.of(context)
+                                .showSnackBar(const SnackBar(
+                                content: Text('Server is online'),
+                              ))
+                            : ScaffoldMessenger.of(context)
+                                .showSnackBar(SnackBar(
+                                content: Text('Error: $status'),
+                              ));
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text('Error: $e'),
+                        ));
+                      }
+                    },
+                    child: const Text('Check API Status'),
+                  ),
+                )
+              ],
+            )),
+          ],
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          backgroundColor: const Color(0xff1b242f),
+          currentIndex: _selectedIndex,
+          onTap: _onNavItemTapped,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.chat),
+              label: 'Chats',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings),
+              label: 'Settings',
+            ),
+          ],
+        ),
+        floatingActionButton: CustomFab(
+          callback: _getChatsFromDatabase,
+          apiController: _apiController,
+          scrollController: scrollController,
+        ));
   }
 }
-
 
 class CustomFab extends StatefulWidget {
   final Function callback;
   final TextEditingController apiController;
   final ScrollController scrollController;
-  
-  CustomFab({required this.callback, required this.apiController, required this.scrollController});
+
+  const CustomFab(
+      {super.key,
+      required this.callback,
+      required this.apiController,
+      required this.scrollController});
 
   @override
-  _CustomFabState createState() => _CustomFabState();
+  CustomFabState createState() => CustomFabState();
 }
 
-class _CustomFabState extends State<CustomFab> {
-  final uuid = Uuid();
+class CustomFabState extends State<CustomFab> {
+  final uuid = const Uuid();
 
   bool isVisible = true;
 
   @override
   void initState() {
+    super.initState();
     widget.scrollController.addListener(() {
       if (widget.scrollController.position.userScrollDirection ==
           ScrollDirection.reverse) {
@@ -261,32 +272,33 @@ class _CustomFabState extends State<CustomFab> {
       }
     });
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return FloatingActionButton.extended(
-          isExtended: isVisible,
-          onPressed: () async {
-            String chatId = uuid.v4();
-            int createdAt = DateTime.now().toUtc().millisecondsSinceEpoch;
-            final newChat = Chat(
-              id: chatId,
-              createdAt: createdAt,
-            );
-            await DatabaseProvider.addChat(newChat);
-            await widget.callback();
+        isExtended: isVisible,
+        onPressed: () async {
+          String chatId = uuid.v4();
+          int createdAt = DateTime.now().toUtc().millisecondsSinceEpoch;
+          final newChat = Chat(
+            id: chatId,
+            createdAt: createdAt,
+          );
+          await DatabaseProvider.addChat(newChat);
+          await widget.callback();
+          if (!mounted) return;
 
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ChatScreen(
-                    chatId: chatId,
-                    APIKey: widget.apiController.text,
-                    createdAt: createdAt),
-              ),
-            );
-          },
-          label: Text('New Chat'),
-          icon: Icon(Icons.add));
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ChatScreen(
+                  chatId: chatId,
+                  apiKey: widget.apiController.text,
+                  createdAt: createdAt),
+            ),
+          );
+        },
+        label: const Text('New Chat'),
+        icon: const Icon(Icons.add));
   }
 }
