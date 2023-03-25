@@ -58,7 +58,7 @@ class MyHomePageState extends State<MyHomePage> {
     // Now that the prefs variable has a value, you can use it
     String? apiKey = prefs.getString('api_key');
     if (apiKey != null) {
-          _apiController.text = apiKey;
+      _apiController.text = apiKey;
     }
   }
 
@@ -106,14 +106,24 @@ class MyHomePageState extends State<MyHomePage> {
                     title: Text(chat.id),
                     onTap: () {
                       Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ChatScreen(
-                              chatId: chat.id,
-                              apiKey: _apiController.text,
-                              createdAt: chat.createdAt),
-                        ),
-                      );
+                          context,
+                          PageRouteBuilder(
+                              pageBuilder: (_, __, ___) => ChatScreen(
+                                  chatId: chat.id,
+                                  apiKey: _apiController.text,
+                                  createdAt: chat.createdAt),
+                              transitionsBuilder: (_,
+                                  Animation<double> animation,
+                                  __,
+                                  Widget child) {
+                                return SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(1.0, 0.0),
+                                    end: Offset.zero,
+                                  ).animate(animation),
+                                  child: child,
+                                );
+                              }));
                     },
                     onLongPress: () async {
                       await DatabaseProvider.deleteChat(chat.id);

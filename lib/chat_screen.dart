@@ -156,6 +156,7 @@ class ChatScreenState extends State<ChatScreen> {
                   controller: _textController,
                 )),
                 IconButton(
+                  splashColor: Colors.transparent,
                   icon: const Icon(Icons.send),
                   onPressed: () {
                     String text = _textController.text;
