@@ -90,7 +90,7 @@ class MyHomePageState extends State<MyHomePage> {
 
     return Scaffold(
         appBar: AppBar(
-          title: const Text('My App'),
+          title: const Text('Chat GPT'),
           backgroundColor: const Color(0xff161c23),
         ),
         body: PageView(
