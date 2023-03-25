@@ -56,8 +56,9 @@ class MyHomePageState extends State<MyHomePage> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
     // Now that the prefs variable has a value, you can use it
-    if (prefs.containsKey('APIKey')) {
-      _apiController.text = prefs.getString('APIKey')!;
+    String? apiKey = prefs.getString('api_key');
+    if (apiKey != null) {
+          _apiController.text = apiKey;
     }
   }
 
