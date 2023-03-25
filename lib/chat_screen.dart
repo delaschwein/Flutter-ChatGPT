@@ -11,12 +11,14 @@ class ChatScreen extends StatefulWidget {
   final String chatId;
   final String apiKey;
   final int createdAt;
+  String title;
 
-  const ChatScreen(
+  ChatScreen(
       {super.key,
       required this.chatId,
       required this.apiKey,
-      required this.createdAt});
+      required this.createdAt,
+      required this.title});
 
   @override
   ChatScreenState createState() => ChatScreenState();
@@ -28,6 +30,7 @@ class ChatScreenState extends State<ChatScreen> {
   final TextEditingController _textController = TextEditingController();
   Uri requestUrl =
       Uri(scheme: 'https', host: 'api.openai.com', path: 'v1/chat/completions');
+  bool enableEditTitle = false;
 
   @override
   void initState() {
@@ -104,6 +107,8 @@ class ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final ScrollController controller = ScrollController();
+    final TextEditingController titleController = TextEditingController();
+    titleController.text = widget.title;
 
     void scrollToBottom() {
       controller.animateTo(controller.position.maxScrollExtent,
@@ -116,7 +121,35 @@ class ChatScreenState extends State<ChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.chatId),
+        leading: IconButton(
+            onPressed: () {
+              Navigator.pop(context, widget.title);
+            },
+            icon: const Icon(Icons.arrow_back)),
+        title: TextField(
+            controller: titleController,
+            enabled: enableEditTitle,
+            decoration: const InputDecoration(border: InputBorder.none)),
+        actions: [
+          IconButton(
+              onPressed: () async {
+                if (enableEditTitle) {
+                  widget.title = titleController.text;
+                  await DatabaseProvider.updateChatTitle(
+                      widget.chatId, titleController.text);
+
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Chat title updated')));
+                }
+                setState(() {
+                  enableEditTitle = !enableEditTitle;
+                });
+              },
+              icon: enableEditTitle
+                  ? const Icon(Icons.save)
+                  : const Icon(Icons.edit))
+        ],
       ),
       body: Column(
         children: [

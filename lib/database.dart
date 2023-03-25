@@ -25,7 +25,8 @@ class DatabaseProvider {
       await db.execute('''
           CREATE TABLE $CHAT_TABLE (
             id TEXT PRIMARY KEY,
-            createdAt STRING
+            createdAt STRING,
+            title TEXT
           )
         ''');
 
@@ -71,5 +72,11 @@ class DatabaseProvider {
         where: "chatId = ?", whereArgs: [chatId], orderBy: "createdAt ASC");
 
     return messages.map((message) => Message.fromMap(message)).toList();
+  }
+
+  static Future<void> updateChatTitle(String chatId, String title) async {
+    final db = await database;
+    await db.update(CHAT_TABLE, {"title": title},
+        where: "id = ?", whereArgs: [chatId]);
   }
 }

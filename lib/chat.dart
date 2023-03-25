@@ -1,19 +1,19 @@
 class Chat {
   final String id;
   final int createdAt;
-  //final List<Message> messages;
+  final String title;
 
   Chat({
     required this.id,
     required this.createdAt,
-    //required this.messages,
+    required this.title
   });
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
       'createdAt': createdAt,
-      //'messages': messages.map((message) => message.toMap()).toList(),
+      'title': title,
     };
   }
 
@@ -21,9 +21,7 @@ class Chat {
     return Chat(
       id: map['id'],
       createdAt: map['createdAt'],
-      /* messages: List<Message>.from(
-        map['messages'].map((message) => Message.fromMap(message)),
-      ), */
+      title: map['title'],
     );
   }
 }

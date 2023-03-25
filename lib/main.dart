@@ -86,6 +86,7 @@ class MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     ScrollController scrollController = ScrollController();
+    List<String> chatTitles = _chats.map((e) => e.title).toList();
 
     return Scaffold(
         appBar: AppBar(
@@ -103,15 +104,16 @@ class MyHomePageState extends State<MyHomePage> {
                 Chat chat = _chats[index];
 
                 return ListTile(
-                    title: Text(chat.id),
-                    onTap: () {
-                      Navigator.push(
+                    title: Text(chatTitles[index]),
+                    onTap: () async {
+                      String newTitle = await Navigator.push(
                           context,
                           PageRouteBuilder(
                               pageBuilder: (_, __, ___) => ChatScreen(
                                   chatId: chat.id,
                                   apiKey: _apiController.text,
-                                  createdAt: chat.createdAt),
+                                  createdAt: chat.createdAt,
+                                  title: chat.title),
                               transitionsBuilder: (_,
                                   Animation<double> animation,
                                   __,
@@ -124,6 +126,12 @@ class MyHomePageState extends State<MyHomePage> {
                                   child: child,
                                 );
                               }));
+                          if (newTitle != chatTitles[index]) {
+                            setState(() {
+                              chatTitles[index] = newTitle;
+                            });
+                          }
+                        await _getChatsFromDatabase();
                     },
                     onLongPress: () async {
                       await DatabaseProvider.deleteChat(chat.id);
@@ -294,6 +302,7 @@ class CustomFabState extends State<CustomFab> {
           final newChat = Chat(
             id: chatId,
             createdAt: createdAt,
+            title: chatId
           );
           await DatabaseProvider.addChat(newChat);
           await widget.callback();
@@ -305,7 +314,8 @@ class CustomFabState extends State<CustomFab> {
               builder: (context) => ChatScreen(
                   chatId: chatId,
                   apiKey: widget.apiController.text,
-                  createdAt: createdAt),
+                  createdAt: createdAt,
+                  title: chatId,),
             ),
           );
         },
