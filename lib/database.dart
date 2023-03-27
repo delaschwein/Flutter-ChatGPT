@@ -1,8 +1,8 @@
-import 'package:path/path.dart';
-import 'package:sqflite/sqflite.dart';
+import "package:path/path.dart";
+import "package:sqflite/sqflite.dart";
 
-import 'chat.dart';
-import 'message.dart';
+import "chat.dart";
+import "message.dart";
 
 class DatabaseProvider {
   static const String CHAT_TABLE = "chat";
@@ -19,18 +19,18 @@ class DatabaseProvider {
 
   static Future<Database> _initDatabase() async {
     final databasePath = await getDatabasesPath();
-    final path = join(databasePath, 'chat_app_database.db');
+    final path = join(databasePath, "chat_app_database.db");
 
     return await openDatabase(path, version: 1, onCreate: (db, version) async {
-      await db.execute('''
+      await db.execute("""
           CREATE TABLE $CHAT_TABLE (
             id TEXT PRIMARY KEY,
             createdAt STRING,
             title TEXT
           )
-        ''');
+        """);
 
-      await db.execute('''
+      await db.execute("""
           CREATE TABLE $MESSAGE_TABLE (
             id TEXT PRIMARY KEY,
             chatId TEXT,
@@ -40,7 +40,7 @@ class DatabaseProvider {
             messageType TEXT,
             FOREIGN KEY (chatId) REFERENCES $CHAT_TABLE(id) ON DELETE CASCADE
           )
-        ''');
+        """);
     });
   }
 

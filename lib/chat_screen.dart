@@ -1,11 +1,11 @@
-import 'dart:convert';
-import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
-import 'package:uuid/uuid.dart';
-import 'package:chat_gpt/message.dart';
-import 'package:chat_gpt/database.dart';
-import 'package:intl/intl.dart'; // for date format
-import 'package:http/http.dart' as http;
+import "dart:convert";
+import "package:flutter/material.dart";
+import "package:flutter/scheduler.dart";
+import "package:uuid/uuid.dart";
+import "package:chat_gpt/message.dart";
+import "package:chat_gpt/database.dart";
+import "package:intl/intl.dart"; // for date format
+import "package:http/http.dart" as http;
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
@@ -29,8 +29,10 @@ class ChatScreenState extends State<ChatScreen> {
   final uuid = const Uuid();
   final TextEditingController _textController = TextEditingController();
   Uri requestUrl =
-      Uri(scheme: 'https', host: 'api.openai.com', path: 'v1/chat/completions');
+      Uri(scheme: "https", host: "api.openai.com", path: "v1/chat/completions");
   bool enableEditTitle = false;
+  final ScrollController controller = ScrollController();
+  final TextEditingController titleController = TextEditingController();
 
   @override
   void initState() {
@@ -48,7 +50,15 @@ class ChatScreenState extends State<ChatScreen> {
   Widget _customText(String content, bool isMe, bool isError) {
     Color backgroundColor =
         isMe ? Colors.lightBlueAccent : const Color(0xff2b303a);
-    Color textColor = isError ? Colors.red : const Color(0xfffefefe);
+    Color textColor;
+
+    if (isError) {
+      textColor = Colors.red;
+    } else if (isMe) {
+      textColor = Colors.black;
+    } else {
+      textColor = const Color(0xfffefefe);
+    }
 
     return Container(
         padding: const EdgeInsets.all(10),
@@ -86,28 +96,27 @@ class ChatScreenState extends State<ChatScreen> {
         ));
   }
 
-  Widget _textAvatarTime(
-      String content, bool isMe, bool isError, int createdAt) {
-    Widget textWidget = _textAvatar(content, isMe, isError);
+  Widget? _textAvatarTime(
+      String content, String sender, bool isError, int createdAt) {
+    Widget textWidget = _textAvatar(content, sender == "user", isError);
+    Widget listItem = sender == "user"
+        ? Column(
+            children: [
+              Text(DateFormat("EEE, MMM dd HH:mm").format(
+                  DateTime.fromMicrosecondsSinceEpoch(createdAt, isUtc: true)
+                      .toLocal())),
+              const SizedBox(height: 5),
+              textWidget
+            ],
+          )
+        : textWidget;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: Column(
-        children: [
-          Text(DateFormat('EEE, MMM dd HH:mm').format(
-              DateTime.fromMicrosecondsSinceEpoch(createdAt, isUtc: true)
-                  .toLocal())),
-          const SizedBox(height: 5),
-          textWidget
-        ],
-      ),
-    );
+        margin: const EdgeInsets.only(top: 10), child: listItem);
   }
 
   @override
   Widget build(BuildContext context) {
-    final ScrollController controller = ScrollController();
-    final TextEditingController titleController = TextEditingController();
     titleController.text = widget.title;
 
     void scrollToBottom() {
@@ -140,7 +149,7 @@ class ChatScreenState extends State<ChatScreen> {
 
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Chat title updated')));
+                      const SnackBar(content: Text("Chat title updated")));
                 }
                 setState(() {
                   enableEditTitle = !enableEditTitle;
@@ -160,8 +169,16 @@ class ChatScreenState extends State<ChatScreen> {
               itemBuilder: (BuildContext context, int index) {
                 Message message = _messages[index];
 
-                return _textAvatarTime(message.content, message.sender == 'me',
-                    message.messageType == 'error', message.createdAt);
+                if (message.sender != "system") {
+                  return _textAvatarTime(message.content, message.sender,
+                      message.messageType == "error", message.createdAt);
+                }
+                return Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: const BoxDecoration(color: Color(0xff2b303a)),
+                    child: const Center(
+                      child: Text("This is the beginning of the conversation"),
+                    ));
               },
             ),
           ),
@@ -177,10 +194,10 @@ class ChatScreenState extends State<ChatScreen> {
                 Expanded(
                     child: TextField(
                   decoration: const InputDecoration(
-                      hintText: 'Type a message', border: InputBorder.none),
+                      hintText: "Type a message", border: InputBorder.none),
                   maxLines: null,
                   onSubmitted: (value) {
-                    _sendMessage(value, 'me', 'chatGPT');
+                    _sendMessage(value, "user", "assistant", _messages);
                     setState(() {
                       _textController.clear();
                     });
@@ -191,9 +208,9 @@ class ChatScreenState extends State<ChatScreen> {
                 IconButton(
                   splashColor: Colors.transparent,
                   icon: const Icon(Icons.send),
-                  onPressed: () {
-                    String text = _textController.text;
-                    _sendMessage(text, 'me', 'chatGPT');
+                  onPressed: () async {
+                    String text = _textController.text.trim();
+                    await _sendMessage(text, "user", "assistant", _messages);
                     setState(() {
                       _textController.clear();
                     });
@@ -216,8 +233,8 @@ class ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  Future<void> _sendMessage(
-      String text, String sender, String recipient) async {
+  Future<void> _sendMessage(String text, String sender, String recipient,
+      List<Message> history) async {
     if (text.isEmpty) {
       return;
     }
@@ -225,50 +242,55 @@ class ChatScreenState extends State<ChatScreen> {
         chatId: widget.chatId,
         content: text,
         sender: sender,
-        messageType: 'text',
+        messageType: "text",
         createdAt: DateTime.now().toUtc().microsecondsSinceEpoch,
         id: uuid.v4());
 
-    addMessage(newMessage);
+    await addMessage(newMessage);
+
+    List<Map<String, String>> allMessages = [];
+    for (Message message in history) {
+      allMessages.add({
+        "role": message.sender,
+        "content": message.content,
+      });
+    }
+    allMessages.add({"role": "user", "content": text});
     // generate response
     try {
       http.Response response = await http.post(requestUrl,
           headers: {
-            'Authorization': 'Bearer ${widget.apiKey}',
-            'Content-Type': 'application/json'
+            "Authorization": "Bearer ${widget.apiKey}",
+            "Content-Type": "application/json"
           },
-          body: jsonEncode({
-            'model': 'gpt-3.5-turbo-0301',
-            "messages": [
-              {"role": "user", "content": text}
-            ]
-          }));
+          body: jsonEncode(
+              {"model": "gpt-3.5-turbo-0301", "messages": allMessages}));
       int status = response.statusCode;
 
       status == 200
           ? addMessage(Message(
               chatId: widget.chatId,
-              content: jsonDecode(response.body)['choices'][0]['message']
-                  ['content'],
+              content: jsonDecode(response.body)["choices"][0]["message"]
+                  ["content"],
               sender: recipient,
-              messageType: 'text',
+              messageType: "text",
               createdAt: DateTime.now().toUtc().microsecondsSinceEpoch,
               id: uuid.v4()))
           : addMessage(Message(
               chatId: widget.chatId,
-              content: jsonDecode(response.body)['error']['type'] +
-                  ': ' +
-                  jsonDecode(response.body)['error']['message'],
+              content: jsonDecode(response.body)["error"]["type"] +
+                  ": " +
+                  jsonDecode(response.body)["error"]["message"],
               sender: recipient,
-              messageType: 'error',
+              messageType: "error",
               createdAt: DateTime.now().toUtc().microsecondsSinceEpoch,
               id: uuid.v4()));
     } catch (e) {
       addMessage(Message(
           chatId: widget.chatId,
-          content: 'Error: $e',
+          content: "Error: $e",
           sender: recipient,
-          messageType: 'error',
+          messageType: "error",
           createdAt: DateTime.now().toUtc().microsecondsSinceEpoch,
           id: uuid.v4()));
     }

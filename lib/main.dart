@@ -1,3 +1,4 @@
+import 'package:chat_gpt/message.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:http/http.dart' as http;
@@ -17,7 +18,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        title: 'Chat GPT',
+        title: "Chat GPT",
         home: const MyHomePage(),
         themeMode: ThemeMode.dark,
         theme: ThemeData.dark().copyWith(
@@ -126,12 +127,12 @@ class MyHomePageState extends State<MyHomePage> {
                                   child: child,
                                 );
                               }));
-                          if (newTitle != chatTitles[index]) {
-                            setState(() {
-                              chatTitles[index] = newTitle;
-                            });
-                          }
-                        await _getChatsFromDatabase();
+                      if (newTitle != chatTitles[index]) {
+                        setState(() {
+                          chatTitles[index] = newTitle;
+                        });
+                      }
+                      await _getChatsFromDatabase();
                     },
                     onLongPress: () async {
                       await DatabaseProvider.deleteChat(chat.id);
@@ -299,27 +300,31 @@ class CustomFabState extends State<CustomFab> {
         onPressed: () async {
           String chatId = uuid.v4();
           int createdAt = DateTime.now().toUtc().millisecondsSinceEpoch;
-          final newChat = Chat(
-            id: chatId,
-            createdAt: createdAt,
-            title: chatId
-          );
+          final newChat = Chat(id: chatId, createdAt: createdAt, title: chatId);
           await DatabaseProvider.addChat(newChat);
           await widget.callback();
+          await DatabaseProvider.addMessage(Message(
+              id: uuid.v4(),
+              content: "You are a helpful assistant.",
+              sender: "system",
+              createdAt: createdAt,
+              chatId: chatId,
+              messageType: "text"));
           if (!mounted) return;
 
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => ChatScreen(
-                  chatId: chatId,
-                  apiKey: widget.apiController.text,
-                  createdAt: createdAt,
-                  title: chatId,),
+                chatId: chatId,
+                apiKey: widget.apiController.text,
+                createdAt: createdAt,
+                title: chatId,
+              ),
             ),
           );
         },
-        label: const Text('New Chat'),
+        label: const Text("New Chat"),
         icon: const Icon(Icons.add));
   }
 }

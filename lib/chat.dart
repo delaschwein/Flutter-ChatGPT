@@ -11,17 +11,17 @@ class Chat {
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
-      'createdAt': createdAt,
-      'title': title,
+      "id": id,
+      "createdAt": createdAt,
+      "title": title,
     };
   }
 
   static Chat fromMap(Map<String, dynamic> map) {
     return Chat(
-      id: map['id'],
-      createdAt: map['createdAt'],
-      title: map['title'],
+      id: map["id"],
+      createdAt: map["createdAt"],
+      title: map["title"],
     );
   }
 }

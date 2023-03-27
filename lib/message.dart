@@ -17,23 +17,23 @@ class Message {
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
-      'content': content,
-      'sender': sender,
-      'createdAt': createdAt,
-      'chatId': chatId,
-      'messageType': messageType,
+      "id": id,
+      "content": content,
+      "sender": sender,
+      "createdAt": createdAt,
+      "chatId": chatId,
+      "messageType": messageType,
     };
   }
 
   static Message fromMap(Map<String, dynamic> json) {
     return Message(
-      id: json['id'],
-      content: json['content'],
-      sender: json['sender'],
-      createdAt: json['createdAt'],
-      chatId: json['chatId'],
-      messageType: json['messageType'],
+      id: json["id"],
+      content: json["content"],
+      sender: json["sender"],
+      createdAt: json["createdAt"],
+      chatId: json["chatId"],
+      messageType: json["messageType"],
     );
   }
 }
