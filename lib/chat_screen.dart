@@ -210,10 +210,11 @@ class ChatScreenState extends State<ChatScreen> {
                   icon: const Icon(Icons.send),
                   onPressed: () async {
                     String text = _textController.text.trim();
-                    await _sendMessage(text, "user", "assistant", _messages);
                     setState(() {
                       _textController.clear();
                     });
+                    await _sendMessage(text, "user", "assistant", _messages);
+                    
                     scrollToBottom();
                   },
                 ),
