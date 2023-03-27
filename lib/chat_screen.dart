@@ -1,12 +1,14 @@
 import "dart:convert";
+
+import "package:chat_gpt/database.dart";
+import "package:chat_gpt/message.dart";
+import "package:chat_gpt/typing_indicator.dart";
 import "package:flutter/material.dart";
 import "package:flutter/scheduler.dart";
-import "package:uuid/uuid.dart";
-import "package:chat_gpt/message.dart";
-import "package:chat_gpt/database.dart";
-import "package:intl/intl.dart"; // for date format
-import "package:http/http.dart" as http;
 import 'package:flutter/services.dart';
+import "package:http/http.dart" as http;
+import "package:intl/intl.dart"; // for date format
+import "package:uuid/uuid.dart";
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
@@ -34,8 +36,8 @@ class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   bool enableEditTitle = false;
   final ScrollController controller = ScrollController();
   final TextEditingController titleController = TextEditingController();
-  bool _isTextFieldFocused = false;
   late AnimationController animationController;
+  bool isWaitingResponse = false;
 
   @override
   void initState() {
@@ -43,7 +45,7 @@ class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     _getMessagesFromDatabase(widget.chatId);
     animationController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 500),
     );
     animationController.forward();
   }
@@ -203,6 +205,9 @@ class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               },
             ),
           ),
+          Row(children: [
+                TypingIndicator(showIndicator: isWaitingResponse)
+              ]),
           Container(
             margin:
                 const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
@@ -217,11 +222,6 @@ class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   decoration: const InputDecoration(
                       hintText: "Type a message", border: InputBorder.none),
                   maxLines: null,
-                  onChanged: (value) {
-                    setState(() {
-                      _isTextFieldFocused = value.isNotEmpty;
-                    });
-                  },
                   onSubmitted: (value) {
                     _sendMessage(value, "user", "assistant", _messages);
                     setState(() {
@@ -243,21 +243,21 @@ class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                         curve: Curves.easeInOut,
                       )),
                       child: IconButton(
-                            highlightColor: Colors.transparent,
-                            hoverColor: Colors.transparent,
-                            splashColor: Colors.transparent,
-                            icon: const Icon(Icons.send),
-                            onPressed: () async {
-                              String text = _textController.text.trim();
-                              setState(() {
-                                _textController.clear();
-                              });
-                              await _sendMessage(
-                                  text, "user", "assistant", _messages);
+                        highlightColor: Colors.transparent,
+                        hoverColor: Colors.transparent,
+                        splashColor: Colors.transparent,
+                        icon: const Icon(Icons.send),
+                        onPressed: () async {
+                          String text = _textController.text.trim();
+                          setState(() {
+                            _textController.clear();
+                          });
+                          await _sendMessage(
+                              text, "user", "assistant", _messages);
 
-                              scrollToBottom();
-                            },
-                          )),
+                          scrollToBottom();
+                        },
+                      )),
                 ),
               ],
             ),
@@ -268,6 +268,16 @@ class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   Future<void> addMessage(Message message) async {
+    if (message.sender == "user") {
+      setState(() {
+        isWaitingResponse = true;
+      });
+    }
+    if (message.sender == "assistant") {
+      setState(() {
+        isWaitingResponse = false;
+      });
+    }
     await DatabaseProvider.addMessage(message);
     List<Message> messages = await DatabaseProvider.getMessages(widget.chatId);
     setState(() {
@@ -310,7 +320,7 @@ class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       int status = response.statusCode;
 
       status == 200
-          ? addMessage(Message(
+          ? await addMessage(Message(
               chatId: widget.chatId,
               content: jsonDecode(response.body)["choices"][0]["message"]
                   ["content"],
@@ -318,7 +328,7 @@ class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               messageType: "text",
               createdAt: DateTime.now().toUtc().microsecondsSinceEpoch,
               id: uuid.v4()))
-          : addMessage(Message(
+          : await addMessage(Message(
               chatId: widget.chatId,
               content: jsonDecode(response.body)["error"]["type"] +
                   ": " +
@@ -328,7 +338,7 @@ class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               createdAt: DateTime.now().toUtc().microsecondsSinceEpoch,
               id: uuid.v4()));
     } catch (e) {
-      addMessage(Message(
+      await addMessage(Message(
           chatId: widget.chatId,
           content: "Error: $e",
           sender: recipient,
