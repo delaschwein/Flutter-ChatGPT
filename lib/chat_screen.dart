@@ -6,6 +6,7 @@ import "package:chat_gpt/message.dart";
 import "package:chat_gpt/database.dart";
 import "package:intl/intl.dart"; // for date format
 import "package:http/http.dart" as http;
+import 'package:flutter/services.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
@@ -51,6 +52,7 @@ class ChatScreenState extends State<ChatScreen> {
     Color backgroundColor =
         isMe ? Colors.lightBlueAccent : const Color(0xff2b303a);
     Color textColor;
+    final String text = content;
 
     if (isError) {
       textColor = Colors.red;
@@ -60,11 +62,18 @@ class ChatScreenState extends State<ChatScreen> {
       textColor = const Color(0xfffefefe);
     }
 
-    return Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-            color: backgroundColor, borderRadius: BorderRadius.circular(20)),
-        child: Text(content, style: TextStyle(color: textColor)));
+    return GestureDetector(
+      onLongPress: () {
+        Clipboard.setData(ClipboardData(text: text));
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Copied to clipboard")));
+      },
+        child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+                color: backgroundColor,
+                borderRadius: BorderRadius.circular(20)),
+            child: Text(text, style: TextStyle(color: textColor))));
   }
 
   Widget _textAvatar(String content, bool isMe, bool isError) {
@@ -111,8 +120,7 @@ class ChatScreenState extends State<ChatScreen> {
           )
         : textWidget;
 
-    return Container(
-        margin: const EdgeInsets.only(top: 10), child: listItem);
+    return Container(margin: const EdgeInsets.only(top: 10), child: listItem);
   }
 
   @override
@@ -214,7 +222,7 @@ class ChatScreenState extends State<ChatScreen> {
                       _textController.clear();
                     });
                     await _sendMessage(text, "user", "assistant", _messages);
-                    
+
                     scrollToBottom();
                   },
                 ),
