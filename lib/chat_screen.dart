@@ -25,7 +25,7 @@ class ChatScreen extends StatefulWidget {
   ChatScreenState createState() => ChatScreenState();
 }
 
-class ChatScreenState extends State<ChatScreen> {
+class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   List<Message> _messages = [];
   final uuid = const Uuid();
   final TextEditingController _textController = TextEditingController();
@@ -34,11 +34,24 @@ class ChatScreenState extends State<ChatScreen> {
   bool enableEditTitle = false;
   final ScrollController controller = ScrollController();
   final TextEditingController titleController = TextEditingController();
+  bool _isTextFieldFocused = false;
+  late AnimationController animationController;
 
   @override
   void initState() {
     super.initState();
     _getMessagesFromDatabase(widget.chatId);
+    animationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 500),
+    );
+    animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    animationController.dispose();
+    super.dispose();
   }
 
   Future<void> _getMessagesFromDatabase(chatId) async {
@@ -63,11 +76,11 @@ class ChatScreenState extends State<ChatScreen> {
     }
 
     return GestureDetector(
-      onLongPress: () {
-        Clipboard.setData(ClipboardData(text: text));
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Copied to clipboard")));
-      },
+        onLongPress: () {
+          Clipboard.setData(ClipboardData(text: text));
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Copied to clipboard")));
+        },
         child: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
@@ -204,6 +217,11 @@ class ChatScreenState extends State<ChatScreen> {
                   decoration: const InputDecoration(
                       hintText: "Type a message", border: InputBorder.none),
                   maxLines: null,
+                  onChanged: (value) {
+                    setState(() {
+                      _isTextFieldFocused = value.isNotEmpty;
+                    });
+                  },
                   onSubmitted: (value) {
                     _sendMessage(value, "user", "assistant", _messages);
                     setState(() {
@@ -213,18 +231,33 @@ class ChatScreenState extends State<ChatScreen> {
                   },
                   controller: _textController,
                 )),
-                IconButton(
-                  splashColor: Colors.transparent,
-                  icon: const Icon(Icons.send),
-                  onPressed: () async {
-                    String text = _textController.text.trim();
-                    setState(() {
-                      _textController.clear();
-                    });
-                    await _sendMessage(text, "user", "assistant", _messages);
+                AnimatedOpacity(
+                  opacity: _textController.text.isEmpty ? 0.0 : 1.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(1, 0),
+                        end: Offset.zero,
+                      ).animate(CurvedAnimation(
+                        parent: animationController,
+                        curve: Curves.easeInOut,
+                      )),
+                      child: IconButton(
+                            highlightColor: Colors.transparent,
+                            hoverColor: Colors.transparent,
+                            splashColor: Colors.transparent,
+                            icon: const Icon(Icons.send),
+                            onPressed: () async {
+                              String text = _textController.text.trim();
+                              setState(() {
+                                _textController.clear();
+                              });
+                              await _sendMessage(
+                                  text, "user", "assistant", _messages);
 
-                    scrollToBottom();
-                  },
+                              scrollToBottom();
+                            },
+                          )),
                 ),
               ],
             ),
