@@ -27,7 +27,8 @@ class ChatScreen extends StatefulWidget {
   ChatScreenState createState() => ChatScreenState();
 }
 
-class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
+class ChatScreenState extends State<ChatScreen>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   List<Message> _messages = [];
   final uuid = const Uuid();
   final TextEditingController _textController = TextEditingController();
@@ -39,6 +40,8 @@ class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   late AnimationController animationController;
   bool isWaitingResponse = false;
   bool isTextEmpty = true;
+  bool isKeyboardVisible = false;
+  double keyboardHeight = 0.0;
 
   @override
   void initState() {
@@ -49,11 +52,13 @@ class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 500),
     );
     animationController.forward();
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
     animationController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -62,6 +67,27 @@ class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     setState(() {
       _messages = items;
     });
+  }
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    final renderObject = context.findRenderObject();
+    if (renderObject is RenderBox) {
+      final viewInsets = WidgetsBinding.instance.window.viewInsets;
+      final newKeyboardHeight = viewInsets.bottom;
+      final keyboardVisibility = viewInsets.bottom > 0.0;
+      if (keyboardHeight != newKeyboardHeight) {
+        setState(() {
+          keyboardHeight = newKeyboardHeight;
+        });
+      }
+      if (isKeyboardVisible != keyboardVisibility) {
+        setState(() {
+          isKeyboardVisible = keyboardVisibility;
+        });
+      }
+    }
   }
 
   Widget _customText(String content, bool isMe, bool isError) {
@@ -152,7 +178,14 @@ class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       scrollToBottom();
     });
 
-    return Scaffold(
+    return GestureDetector(onTap: () {
+        if (isKeyboardVisible) {
+          final currentFocus = FocusScope.of(context);
+          if (!currentFocus.hasPrimaryFocus) {
+            currentFocus.unfocus();
+          }
+        }
+      }, child:Scaffold(
       appBar: AppBar(
         leading: IconButton(
             onPressed: () {
@@ -206,9 +239,7 @@ class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               },
             ),
           ),
-          Row(children: [
-                TypingIndicator(showIndicator: isWaitingResponse)
-              ]),
+          Row(children: [TypingIndicator(showIndicator: isWaitingResponse)]),
           Container(
             margin:
                 const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
@@ -276,7 +307,7 @@ class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           ),
         ],
       ),
-    );
+    ));
   }
 
   Future<void> addMessage(Message message) async {
