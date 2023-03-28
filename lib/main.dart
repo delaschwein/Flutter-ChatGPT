@@ -17,7 +17,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        title: "Chat GPT",
+        title: "ChatGPT",
         home: const MyHomePage(),
         themeMode: ThemeMode.dark,
         theme: ThemeData.dark().copyWith(
@@ -90,7 +90,7 @@ class MyHomePageState extends State<MyHomePage> {
 
     return Scaffold(
         appBar: AppBar(
-          title: const Text('Chat GPT'),
+          title: const Text('ChatGPT'),
           backgroundColor: const Color(0xff161c23),
         ),
         body: PageView(

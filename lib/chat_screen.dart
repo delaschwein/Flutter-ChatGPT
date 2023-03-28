@@ -38,6 +38,7 @@ class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final TextEditingController titleController = TextEditingController();
   late AnimationController animationController;
   bool isWaitingResponse = false;
+  bool isTextEmpty = true;
 
   @override
   void initState() {
@@ -222,6 +223,17 @@ class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   decoration: const InputDecoration(
                       hintText: "Type a message", border: InputBorder.none),
                   maxLines: null,
+                  onChanged: (value) {
+                    if (value.isNotEmpty) {
+                      setState(() {
+                        isTextEmpty = false;
+                      });
+                    } else {
+                      setState(() {
+                        isTextEmpty = true;
+                      });
+                    }
+                  },
                   onSubmitted: (value) {
                     _sendMessage(value, "user", "assistant", _messages);
                     setState(() {
@@ -232,8 +244,8 @@ class ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   controller: _textController,
                 )),
                 AnimatedOpacity(
-                  opacity: _textController.text.isEmpty ? 0.0 : 1.0,
-                  duration: const Duration(milliseconds: 200),
+                  opacity: isTextEmpty ? 0.0 : 1.0,
+                  duration: const Duration(milliseconds: 300),
                   child: SlideTransition(
                       position: Tween<Offset>(
                         begin: const Offset(1, 0),
