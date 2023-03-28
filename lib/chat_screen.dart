@@ -122,13 +122,13 @@ class ChatScreenState extends State<ChatScreen>
     Widget textWidget = Flexible(child: _customText(content, isMe, isError));
     Widget avatar = isMe
         ? const CircleAvatar(
-            backgroundColor: Colors.lightBlueAccent,
-            child: Icon(Icons.person),
-          )
+              backgroundColor: Colors.lightBlueAccent,
+              child: Icon(Icons.person),
+            )
         : const CircleAvatar(
-            backgroundColor: Color(0xff74a99d),
-            child: Icon(Icons.android),
-          );
+              backgroundColor: Color(0xff74a99d),
+              child: Icon(Icons.android),
+            );
     Widget first = isMe ? textWidget : avatar;
     Widget last = isMe ? avatar : textWidget;
 
@@ -137,6 +137,8 @@ class ChatScreenState extends State<ChatScreen>
             ? const EdgeInsets.only(left: 80, right: 10)
             : const EdgeInsets.only(right: 80, left: 10),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          textBaseline: TextBaseline.alphabetic,
           mainAxisAlignment:
               isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
           children: [
@@ -178,136 +180,142 @@ class ChatScreenState extends State<ChatScreen>
       scrollToBottom();
     });
 
-    return GestureDetector(onTap: () {
-        if (isKeyboardVisible) {
-          final currentFocus = FocusScope.of(context);
-          if (!currentFocus.hasPrimaryFocus) {
-            currentFocus.unfocus();
+    return GestureDetector(
+        onTap: () {
+          if (isKeyboardVisible) {
+            final currentFocus = FocusScope.of(context);
+            if (!currentFocus.hasPrimaryFocus) {
+              currentFocus.unfocus();
+            }
           }
-        }
-      }, child:Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-            onPressed: () {
-              Navigator.pop(context, widget.title);
-            },
-            icon: const Icon(Icons.arrow_back)),
-        title: TextField(
-            controller: titleController,
-            enabled: enableEditTitle,
-            decoration: const InputDecoration(border: InputBorder.none)),
-        actions: [
-          IconButton(
-              onPressed: () async {
-                if (enableEditTitle) {
-                  widget.title = titleController.text;
-                  await DatabaseProvider.updateChatTitle(
-                      widget.chatId, titleController.text);
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            leading: IconButton(
+                onPressed: () {
+                  Navigator.pop(context, widget.title);
+                },
+                icon: const Icon(Icons.arrow_back)),
+            title: TextField(
+                controller: titleController,
+                enabled: enableEditTitle,
+                decoration: const InputDecoration(border: InputBorder.none)),
+            actions: [
+              IconButton(
+                  onPressed: () async {
+                    if (enableEditTitle) {
+                      widget.title = titleController.text;
+                      await DatabaseProvider.updateChatTitle(
+                          widget.chatId, titleController.text);
 
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Chat title updated")));
-                }
-                setState(() {
-                  enableEditTitle = !enableEditTitle;
-                });
-              },
-              icon: enableEditTitle
-                  ? const Icon(Icons.save)
-                  : const Icon(Icons.edit))
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              controller: controller,
-              itemCount: _messages.length,
-              itemBuilder: (BuildContext context, int index) {
-                Message message = _messages[index];
-
-                if (message.sender != "system") {
-                  return _textAvatarTime(message.content, message.sender,
-                      message.messageType == "error", message.createdAt);
-                }
-                return Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: const BoxDecoration(color: Color(0xff2b303a)),
-                    child: const Center(
-                      child: Text("This is the beginning of the conversation"),
-                    ));
-              },
-            ),
-          ),
-          Row(children: [TypingIndicator(showIndicator: isWaitingResponse)]),
-          Container(
-            margin:
-                const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(30.0),
-                color: const Color(0xff2b303a)),
-            child: Row(
-              children: [
-                Expanded(
-                    child: TextField(
-                  decoration: const InputDecoration(
-                      hintText: "Type a message", border: InputBorder.none),
-                  maxLines: null,
-                  onChanged: (value) {
-                    if (value.isNotEmpty) {
-                      setState(() {
-                        isTextEmpty = false;
-                      });
-                    } else {
-                      setState(() {
-                        isTextEmpty = true;
-                      });
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Chat title updated")));
                     }
-                  },
-                  onSubmitted: (value) {
-                    _sendMessage(value, "user", "assistant", _messages);
                     setState(() {
-                      _textController.clear();
+                      enableEditTitle = !enableEditTitle;
                     });
-                    scrollToBottom();
                   },
-                  controller: _textController,
-                )),
-                AnimatedOpacity(
-                  opacity: isTextEmpty ? 0.0 : 1.0,
-                  duration: const Duration(milliseconds: 300),
-                  child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(1, 0),
-                        end: Offset.zero,
-                      ).animate(CurvedAnimation(
-                        parent: animationController,
-                        curve: Curves.easeInOut,
-                      )),
-                      child: IconButton(
-                        highlightColor: Colors.transparent,
-                        hoverColor: Colors.transparent,
-                        splashColor: Colors.transparent,
-                        icon: const Icon(Icons.send),
-                        onPressed: () async {
-                          String text = _textController.text.trim();
-                          setState(() {
-                            _textController.clear();
-                          });
-                          await _sendMessage(
-                              text, "user", "assistant", _messages);
-
-                          scrollToBottom();
-                        },
-                      )),
-                ),
-              ],
-            ),
+                  icon: enableEditTitle
+                      ? const Icon(Icons.save)
+                      : const Icon(Icons.edit))
+            ],
           ),
-        ],
-      ),
-    ));
+          body: Column(
+            children: [
+              Expanded(
+                child: ListView.builder(
+                  controller: controller,
+                  itemCount: _messages.length,
+                  itemBuilder: (BuildContext context, int index) {
+                    Message message = _messages[index];
+
+                    if (message.sender != "system") {
+                      return _textAvatarTime(message.content, message.sender,
+                          message.messageType == "error", message.createdAt);
+                    }
+                    return Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration:
+                            const BoxDecoration(color: Color(0xff2b303a)),
+                        child: const Center(
+                          child:
+                              Text("This is the beginning of the conversation"),
+                        ));
+                  },
+                ),
+              ),
+              Row(children: [
+                TypingIndicator(showIndicator: isWaitingResponse)
+              ]),
+              Container(
+                margin: const EdgeInsets.symmetric(
+                    horizontal: 20.0, vertical: 10.0),
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(30.0),
+                    color: const Color(0xff2b303a)),
+                child: Row(
+                  children: [
+                    Expanded(
+                        child: TextField(
+                      decoration: const InputDecoration(
+                          hintText: "Type a message", border: InputBorder.none),
+                      maxLines: null,
+                      onChanged: (value) {
+                        if (value.isNotEmpty) {
+                          setState(() {
+                            isTextEmpty = false;
+                          });
+                        } else {
+                          setState(() {
+                            isTextEmpty = true;
+                          });
+                        }
+                      },
+                      onSubmitted: (value) {
+                        _sendMessage(value, "user", "assistant", _messages);
+                        setState(() {
+                          _textController.clear();
+                        });
+                        scrollToBottom();
+                      },
+                      controller: _textController,
+                    )),
+                    AnimatedOpacity(
+                      opacity: isTextEmpty ? 0.0 : 1.0,
+                      duration: const Duration(milliseconds: 300),
+                      child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(1, 0),
+                            end: Offset.zero,
+                          ).animate(CurvedAnimation(
+                            parent: animationController,
+                            curve: Curves.easeInOut,
+                          )),
+                          child: IconButton(
+                            highlightColor: Colors.transparent,
+                            hoverColor: Colors.transparent,
+                            splashColor: Colors.transparent,
+                            icon: const Icon(Icons.send),
+                            onPressed: () async {
+                              String text = _textController.text.trim();
+                              setState(() {
+                                _textController.clear();
+                              });
+                              await _sendMessage(
+                                  text, "user", "assistant", _messages);
+
+                              scrollToBottom();
+                            },
+                          )),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ));
   }
 
   Future<void> addMessage(Message message) async {
