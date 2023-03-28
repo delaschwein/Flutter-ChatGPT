@@ -3,6 +3,7 @@ import 'package:chat_gpt/chat_screen.dart';
 import 'package:chat_gpt/database.dart';
 import 'package:chat_gpt/fab.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -42,14 +43,27 @@ class MyHomePageState extends State<MyHomePage> {
   List<Chat> _chats = [];
   final uuid = const Uuid();
   final TextEditingController _apiController = TextEditingController();
-
+  bool isVisible = false;
+  ScrollController scrollController = ScrollController();
   Uri testUrl = Uri(scheme: 'https', host: 'api.openai.com', path: 'v1/models');
+
+  
 
   @override
   void initState() {
     super.initState();
     _getChatsFromDatabase();
     initializeSharedPreferences();
+
+    scrollController.addListener(() {if (scrollController.position.userScrollDirection == ScrollDirection.reverse) {
+      setState(() {
+        isVisible = false;
+      });
+    }if (scrollController.position.userScrollDirection == ScrollDirection.forward) {
+      setState(() {
+        isVisible = true;
+      });
+    }});
   }
 
   void initializeSharedPreferences() async {
@@ -85,7 +99,6 @@ class MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    ScrollController scrollController = ScrollController();
     List<String> chatTitles = _chats.map((e) => e.title).toList();
 
     return Scaffold(
@@ -244,7 +257,7 @@ class MyHomePageState extends State<MyHomePage> {
         floatingActionButton: CustomFab(
           callback: _getChatsFromDatabase,
           apiController: _apiController,
-          scrollController: scrollController,
+          isVisible: isVisible,
         ));
   }
 }
