@@ -100,8 +100,7 @@ class ChatScreenState extends State<ChatScreen>
   }
 
   // represent a message bubble
-  Widget _customText(
-      String content, String sender, bool isError, bool isLatestMessage) {
+  Widget _customText(String content, String sender, bool isError) {
     final bool isMe = sender == "me";
     // bubble and text color depends on sender
     Color backgroundColor =
@@ -135,10 +134,8 @@ class ChatScreenState extends State<ChatScreen>
   }
 
   // represent a message bubble with sender avatar
-  Widget _textAvatar(
-      String content, String sender, bool isError, bool isLatestMessage) {
-    Widget textWidget =
-        Flexible(child: _customText(content, sender, isError, isLatestMessage));
+  Widget _textAvatar(String content, String sender, bool isError) {
+    Widget textWidget = Flexible(child: _customText(content, sender, isError));
     final bool isMe = sender == "user";
     Widget avatar = isMe
         ? const CircleAvatar(
@@ -171,9 +168,9 @@ class ChatScreenState extends State<ChatScreen>
   }
 
   // represent a message bubble with sender avatar and timestamp
-  Widget _textAvatarTime(String content, String sender, bool isError,
-      int createdAt, bool isLatestMessage) {
-    Widget textWidget = _textAvatar(content, sender, isError, isLatestMessage);
+  Widget _textAvatarTime(
+      String content, String sender, bool isError, int createdAt) {
+    Widget textWidget = _textAvatar(content, sender, isError);
     Widget listItem = sender == "user"
         ? Column(
             children: [
@@ -240,12 +237,8 @@ class ChatScreenState extends State<ChatScreen>
                 Message message = _messages[index];
 
                 if (message.sender != "system") {
-                  return _textAvatarTime(
-                      message.content,
-                      message.sender,
-                      message.messageType == "error",
-                      message.createdAt,
-                      index == _messages.length - 1);
+                  return _textAvatarTime(message.content, message.sender,
+                      message.messageType == "error", message.createdAt);
                 }
                 return Container(
                     padding: const EdgeInsets.symmetric(vertical: 10),
