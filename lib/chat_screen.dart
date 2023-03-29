@@ -29,23 +29,27 @@ class ChatScreen extends StatefulWidget {
 
 class ChatScreenState extends State<ChatScreen>
     with TickerProviderStateMixin, WidgetsBindingObserver {
-  List<Message> _messages = [];
-  final uuid = const Uuid();
-  final TextEditingController _textController = TextEditingController();
+  List<Message> _messages = []; // local copy of messages
+  final uuid = const Uuid(); // for generating unique ids
+  final TextEditingController _textController =
+      TextEditingController(); // for text input
   Uri requestUrl =
       Uri(scheme: "https", host: "api.openai.com", path: "v1/chat/completions");
-  bool enableEditTitle = false;
-  final ScrollController controller = ScrollController();
-  final TextEditingController titleController = TextEditingController();
-  late AnimationController animationController;
-  bool isWaitingResponse = false;
-  bool isTextEmpty = true;
+  bool enableEditTitle = false; // if true, title can be edited
+  final ScrollController controller =
+      ScrollController(); // for auto scrolling to bottom
+  final TextEditingController titleController =
+      TextEditingController(); // for title input
+  late AnimationController animationController; // show/hide send button
+  bool isWaitingResponse = false; // if true, show typing indicator (TODO)
+  bool isTextEmpty = true; // if true, send button is disabled
   bool isKeyboardVisible = false;
   double keyboardHeight = 0.0;
 
   @override
   void initState() {
     super.initState();
+    // get messages from database
     _getMessagesFromDatabase(widget.chatId);
     animationController = AnimationController(
       vsync: this,
@@ -60,6 +64,11 @@ class ChatScreenState extends State<ChatScreen>
     animationController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void scrollToBottom() {
+    controller.animateTo(controller.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 500), curve: Curves.easeOut);
   }
 
   Future<void> _getMessagesFromDatabase(chatId) async {
@@ -90,9 +99,11 @@ class ChatScreenState extends State<ChatScreen>
     }
   }
 
+  // represent a message bubble
   Widget _customText(
       String content, String sender, bool isError, bool isLatestMessage) {
     final bool isMe = sender == "me";
+    // bubble and text color depends on sender
     Color backgroundColor =
         isMe ? Colors.lightBlueAccent : const Color(0xff2b303a);
     Color textColor;
@@ -106,6 +117,7 @@ class ChatScreenState extends State<ChatScreen>
     }
 
     return GestureDetector(
+        // copy to clipboard on long press
         onLongPress: () {
           Clipboard.setData(ClipboardData(text: content));
           ScaffoldMessenger.of(context).showSnackBar(
@@ -122,6 +134,7 @@ class ChatScreenState extends State<ChatScreen>
                 ))));
   }
 
+  // represent a message bubble with sender avatar
   Widget _textAvatar(
       String content, String sender, bool isError, bool isLatestMessage) {
     Widget textWidget =
@@ -140,6 +153,7 @@ class ChatScreenState extends State<ChatScreen>
     Widget last = isMe ? avatar : textWidget;
 
     return Container(
+        // margin, alignment, and order of avatar and text depends on sender
         margin: isMe
             ? const EdgeInsets.only(left: 80, right: 10)
             : const EdgeInsets.only(right: 80, left: 10),
@@ -156,6 +170,7 @@ class ChatScreenState extends State<ChatScreen>
         ));
   }
 
+  // represent a message bubble with sender avatar and timestamp
   Widget _textAvatarTime(String content, String sender, bool isError,
       int createdAt, bool isLatestMessage) {
     Widget textWidget = _textAvatar(content, sender, isError, isLatestMessage);
@@ -178,153 +193,138 @@ class ChatScreenState extends State<ChatScreen>
   Widget build(BuildContext context) {
     titleController.text = widget.title;
 
-    void scrollToBottom() {
-      controller.animateTo(controller.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 500), curve: Curves.easeOut);
-    }
-
+    // scroll to bottom after build
     SchedulerBinding.instance.addPostFrameCallback((_) {
       scrollToBottom();
     });
 
-    return GestureDetector(
-        onTap: () {
-          if (isKeyboardVisible) {
-            final currentFocus = FocusScope.of(context);
-            if (!currentFocus.hasPrimaryFocus) {
-              currentFocus.unfocus();
-            }
-          }
-        },
-        child: Scaffold(
-          appBar: AppBar(
-            leading: IconButton(
-                onPressed: () {
-                  Navigator.pop(context, widget.title);
-                },
-                icon: const Icon(Icons.arrow_back)),
-            title: TextField(
-                controller: titleController,
-                enabled: enableEditTitle,
-                decoration: const InputDecoration(border: InputBorder.none)),
-            actions: [
-              IconButton(
-                  onPressed: () async {
-                    if (enableEditTitle) {
-                      widget.title = titleController.text;
-                      await DatabaseProvider.updateChatTitle(
-                          widget.chatId, titleController.text);
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+            onPressed: () {
+              Navigator.pop(context, widget.title);
+            },
+            icon: const Icon(Icons.arrow_back)),
+        title: TextField(
+            controller: titleController,
+            enabled: enableEditTitle,
+            decoration: const InputDecoration(border: InputBorder.none)),
+        actions: [
+          IconButton(
+              onPressed: () async {
+                if (enableEditTitle) {
+                  widget.title = titleController.text;
+                  await DatabaseProvider.updateChatTitle(
+                      widget.chatId, titleController.text);
 
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Chat title updated")));
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Chat title updated")));
+                }
+                setState(() {
+                  enableEditTitle = !enableEditTitle;
+                });
+              },
+              icon: enableEditTitle
+                  ? const Icon(Icons.save)
+                  : const Icon(Icons.edit))
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              controller: controller,
+              itemCount: _messages.length,
+              itemBuilder: (BuildContext context, int index) {
+                Message message = _messages[index];
+
+                if (message.sender != "system") {
+                  return _textAvatarTime(
+                      message.content,
+                      message.sender,
+                      message.messageType == "error",
+                      message.createdAt,
+                      index == _messages.length - 1);
+                }
+                return Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: const BoxDecoration(color: Color(0xff2b303a)),
+                    child: const Center(
+                      child: Text("This is the beginning of the conversation"),
+                    ));
+              },
+            ),
+          ),
+          // Represents the text field where the user types the message
+          Container(
+            margin:
+                const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+            decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(30.0),
+                color: const Color(0xff2b303a)),
+            child: Row(
+              children: [
+                Expanded(
+                    child: TextField(
+                  decoration: const InputDecoration(
+                      hintText: "Type a message", border: InputBorder.none),
+                  maxLines: null,
+                  onChanged: (value) {
+                    if (value.isNotEmpty) {
+                      setState(() {
+                        isTextEmpty = false;
+                      });
+                    } else {
+                      setState(() {
+                        isTextEmpty = true;
+                      });
                     }
+                  },
+                  onSubmitted: (value) {
+                    _sendMessage(value, "user", "assistant", _messages);
                     setState(() {
-                      enableEditTitle = !enableEditTitle;
+                      _textController.clear();
                     });
+                    scrollToBottom();
                   },
-                  icon: enableEditTitle
-                      ? const Icon(Icons.save)
-                      : const Icon(Icons.edit))
-            ],
-          ),
-          body: Column(
-            children: [
-              Expanded(
-                child: ListView.builder(
-                  controller: controller,
-                  itemCount: _messages.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    Message message = _messages[index];
-
-                    if (message.sender != "system") {
-                      return _textAvatarTime(
-                          message.content,
-                          message.sender,
-                          message.messageType == "error",
-                          message.createdAt,
-                          index == _messages.length - 1);
-                    }
-                    return Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration:
-                            const BoxDecoration(color: Color(0xff2b303a)),
-                        child: const Center(
-                          child:
-                              Text("This is the beginning of the conversation"),
-                        ));
-                  },
-                ),
-              ),
-              // Represents the text field where the user types the message
-              Container(
-                margin: const EdgeInsets.symmetric(
-                    horizontal: 20.0, vertical: 10.0),
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(30.0),
-                    color: const Color(0xff2b303a)),
-                child: Row(
-                  children: [
-                    Expanded(
-                        child: TextField(
-                      decoration: const InputDecoration(
-                          hintText: "Type a message", border: InputBorder.none),
-                      maxLines: null,
-                      onChanged: (value) {
-                        if (value.isNotEmpty) {
+                  controller: _textController,
+                )),
+                AnimatedOpacity(
+                  opacity: isTextEmpty ? 0.0 : 1.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(1, 0),
+                        end: Offset.zero,
+                      ).animate(CurvedAnimation(
+                        parent: animationController,
+                        curve: Curves.easeInOut,
+                      )),
+                      child: IconButton(
+                        highlightColor: Colors.transparent,
+                        hoverColor: Colors.transparent,
+                        splashColor: Colors.transparent,
+                        icon: const Icon(Icons.send),
+                        onPressed: () async {
+                          String text = _textController.text.trim();
                           setState(() {
-                            isTextEmpty = false;
+                            _textController.clear();
                           });
-                        } else {
-                          setState(() {
-                            isTextEmpty = true;
-                          });
-                        }
-                      },
-                      onSubmitted: (value) {
-                        _sendMessage(value, "user", "assistant", _messages);
-                        setState(() {
-                          _textController.clear();
-                        });
-                        scrollToBottom();
-                      },
-                      controller: _textController,
-                    )),
-                    AnimatedOpacity(
-                      opacity: isTextEmpty ? 0.0 : 1.0,
-                      duration: const Duration(milliseconds: 300),
-                      child: SlideTransition(
-                          position: Tween<Offset>(
-                            begin: const Offset(1, 0),
-                            end: Offset.zero,
-                          ).animate(CurvedAnimation(
-                            parent: animationController,
-                            curve: Curves.easeInOut,
-                          )),
-                          child: IconButton(
-                            highlightColor: Colors.transparent,
-                            hoverColor: Colors.transparent,
-                            splashColor: Colors.transparent,
-                            icon: const Icon(Icons.send),
-                            onPressed: () async {
-                              String text = _textController.text.trim();
-                              setState(() {
-                                _textController.clear();
-                              });
-                              await _sendMessage(
-                                  text, "user", "assistant", _messages);
+                          await _sendMessage(
+                              text, "user", "assistant", _messages);
 
-                              scrollToBottom();
-                            },
-                          )),
-                    ),
-                  ],
+                          scrollToBottom();
+                        },
+                      )),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ));
+        ],
+      ),
+    );
   }
 
   Future<void> addMessage(Message message) async {
@@ -357,6 +357,7 @@ class ChatScreenState extends State<ChatScreen>
 
     await addMessage(newMessage);
 
+    // prepare conversation history
     List<Map<String, String>> allMessages = [];
     for (Message message in history) {
       allMessages.add({
@@ -385,6 +386,7 @@ class ChatScreenState extends State<ChatScreen>
               messageType: "text",
               createdAt: DateTime.now().toUtc().microsecondsSinceEpoch,
               id: uuid.v4()))
+          // server error
           : await addMessage(Message(
               chatId: widget.chatId,
               content: jsonDecode(response.body)["error"]["type"] +
@@ -395,6 +397,7 @@ class ChatScreenState extends State<ChatScreen>
               createdAt: DateTime.now().toUtc().microsecondsSinceEpoch,
               id: uuid.v4()));
     } catch (e) {
+      // client error
       await addMessage(Message(
           chatId: widget.chatId,
           content: "Error: $e",

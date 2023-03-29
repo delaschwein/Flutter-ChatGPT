@@ -43,11 +43,9 @@ class MyHomePageState extends State<MyHomePage> {
   List<Chat> _chats = [];
   final uuid = const Uuid();
   final TextEditingController _apiController = TextEditingController();
-  bool isVisible = false;
+  bool isVisible = false; // for expanding FAB
   ScrollController scrollController = ScrollController();
   Uri testUrl = Uri(scheme: 'https', host: 'api.openai.com', path: 'v1/models');
-
-  
 
   @override
   void initState() {
@@ -55,6 +53,7 @@ class MyHomePageState extends State<MyHomePage> {
     _getChatsFromDatabase();
     initializeSharedPreferences();
 
+    // for expanding FAB
     scrollController.addListener(() {if (scrollController.position.userScrollDirection == ScrollDirection.reverse) {
       setState(() {
         isVisible = false;
@@ -66,6 +65,7 @@ class MyHomePageState extends State<MyHomePage> {
     }});
   }
 
+  // retrieve API key from SharedPreferences
   void initializeSharedPreferences() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
@@ -169,6 +169,7 @@ class MyHomePageState extends State<MyHomePage> {
                     });
               },
             ),
+            // Settings page
             Center(
                 child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
