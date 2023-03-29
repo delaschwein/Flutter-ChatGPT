@@ -5,13 +5,11 @@ import "package:flutter/material.dart";
 class TypingIndicator extends StatefulWidget {
   const TypingIndicator({
     super.key,
-    this.showIndicator = false,
     this.bubbleColor = const Color(0xff2b303a),
     this.flashingCircleDarkColor = const Color(0xFF333333),
     this.flashingCircleBrightColor = const Color(0xFFaec1dd),
   });
 
-  final bool showIndicator;
   final Color bubbleColor;
   final Color flashingCircleDarkColor;
   final Color flashingCircleBrightColor;
@@ -57,22 +55,8 @@ class _TypingIndicatorState extends State<TypingIndicator>
       duration: const Duration(milliseconds: 1500),
     );
 
-    if (widget.showIndicator) {
       _showIndicator();
-    }
-  }
-
-  @override
-  void didUpdateWidget(TypingIndicator oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    if (widget.showIndicator != oldWidget.showIndicator) {
-      if (widget.showIndicator) {
-        _showIndicator();
-      } else {
-        _hideIndicator();
-      }
-    }
+    
   }
 
   @override
@@ -87,13 +71,6 @@ class _TypingIndicatorState extends State<TypingIndicator>
       ..duration = const Duration(milliseconds: 750)
       ..forward();
     _repeatingController.repeat();
-  }
-
-  void _hideIndicator() {
-    _appearanceController
-      ..duration = const Duration(milliseconds: 150)
-      ..reverse();
-    _repeatingController.stop();
   }
 
   @override
@@ -196,16 +173,7 @@ class StatusBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 70,
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      margin: const EdgeInsets.only(left: 10, right: 80),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(27),
-        color: bubbleColor,
-      ),
-      child: Row(
+    return Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           FlashingCircle(
@@ -230,8 +198,8 @@ class StatusBubble extends StatelessWidget {
             flashingCircleBrightColor: flashingCircleBrightColor,
           ),
         ],
-      ),
-    );
+      )
+    ;
   }
 }
 

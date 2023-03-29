@@ -90,11 +90,12 @@ class ChatScreenState extends State<ChatScreen>
     }
   }
 
-  Widget _customText(String content, bool isMe, bool isError) {
+  Widget _customText(
+      String content, String sender, bool isError, bool isLatestMessage) {
+    final bool isMe = sender == "me";
     Color backgroundColor =
         isMe ? Colors.lightBlueAccent : const Color(0xff2b303a);
     Color textColor;
-    final String text = content;
 
     if (isError) {
       textColor = Colors.red;
@@ -106,7 +107,7 @@ class ChatScreenState extends State<ChatScreen>
 
     return GestureDetector(
         onLongPress: () {
-          Clipboard.setData(ClipboardData(text: text));
+          Clipboard.setData(ClipboardData(text: content));
           ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text("Copied to clipboard")));
         },
@@ -115,20 +116,26 @@ class ChatScreenState extends State<ChatScreen>
             decoration: BoxDecoration(
                 color: backgroundColor,
                 borderRadius: BorderRadius.circular(20)),
-            child: Text(text, style: TextStyle(color: textColor))));
+            child: Text(content,
+                style: TextStyle(
+                  color: textColor,
+                ))));
   }
 
-  Widget _textAvatar(String content, bool isMe, bool isError) {
-    Widget textWidget = Flexible(child: _customText(content, isMe, isError));
+  Widget _textAvatar(
+      String content, String sender, bool isError, bool isLatestMessage) {
+    Widget textWidget =
+        Flexible(child: _customText(content, sender, isError, isLatestMessage));
+    final bool isMe = sender == "user";
     Widget avatar = isMe
         ? const CircleAvatar(
-              backgroundColor: Colors.lightBlueAccent,
-              child: Icon(Icons.person),
-            )
+            backgroundColor: Colors.lightBlueAccent,
+            child: Icon(Icons.person),
+          )
         : const CircleAvatar(
-              backgroundColor: Color(0xff74a99d),
-              child: Icon(Icons.android),
-            );
+            backgroundColor: Color(0xff74a99d),
+            child: Icon(Icons.android),
+          );
     Widget first = isMe ? textWidget : avatar;
     Widget last = isMe ? avatar : textWidget;
 
@@ -149,9 +156,9 @@ class ChatScreenState extends State<ChatScreen>
         ));
   }
 
-  Widget? _textAvatarTime(
-      String content, String sender, bool isError, int createdAt) {
-    Widget textWidget = _textAvatar(content, sender == "user", isError);
+  Widget _textAvatarTime(String content, String sender, bool isError,
+      int createdAt, bool isLatestMessage) {
+    Widget textWidget = _textAvatar(content, sender, isError, isLatestMessage);
     Widget listItem = sender == "user"
         ? Column(
             children: [
@@ -231,8 +238,12 @@ class ChatScreenState extends State<ChatScreen>
                     Message message = _messages[index];
 
                     if (message.sender != "system") {
-                      return _textAvatarTime(message.content, message.sender,
-                          message.messageType == "error", message.createdAt);
+                      return _textAvatarTime(
+                          message.content,
+                          message.sender,
+                          message.messageType == "error",
+                          message.createdAt,
+                          index == _messages.length - 1);
                     }
                     return Container(
                         padding: const EdgeInsets.symmetric(vertical: 10),
@@ -245,9 +256,7 @@ class ChatScreenState extends State<ChatScreen>
                   },
                 ),
               ),
-              Row(children: [
-                TypingIndicator(showIndicator: isWaitingResponse)
-              ]),
+              // Represents the text field where the user types the message
               Container(
                 margin: const EdgeInsets.symmetric(
                     horizontal: 20.0, vertical: 10.0),
@@ -330,10 +339,7 @@ class ChatScreenState extends State<ChatScreen>
       });
     }
     await DatabaseProvider.addMessage(message);
-    List<Message> messages = await DatabaseProvider.getMessages(widget.chatId);
-    setState(() {
-      _messages = messages;
-    });
+    _getMessagesFromDatabase(widget.chatId);
   }
 
   Future<void> _sendMessage(String text, String sender, String recipient,
