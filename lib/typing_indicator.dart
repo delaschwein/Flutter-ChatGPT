@@ -79,7 +79,6 @@ class _TypingIndicatorState extends State<TypingIndicator>
       animation: _indicatorSpaceAnimation,
       builder: (context, child) {
         return SizedBox(
-          height: _indicatorSpaceAnimation.value,
           child: child,
         );
       },

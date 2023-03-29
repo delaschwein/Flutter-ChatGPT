@@ -256,6 +256,21 @@ class ChatScreenState extends State<ChatScreen>
               },
             ),
           ),
+          Container(
+              margin: const EdgeInsets.only(top: 20.0),
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Visibility(
+                  visible: isWaitingResponse,
+                  child: Row(
+                    children: [
+                      Container(
+                          padding: const EdgeInsets.symmetric(vertical: 5),
+                          child: const Center(
+                            child: Text("ChatGPT is typing "),
+                          )),
+                      const TypingIndicator()
+                    ],
+                  ))),
           // Represents the text field where the user types the message
           Container(
             margin:
