@@ -2,6 +2,7 @@ import 'package:chat_gpt/chat.dart';
 import 'package:chat_gpt/chat_screen.dart';
 import 'package:chat_gpt/database.dart';
 import 'package:chat_gpt/fab.dart';
+import 'package:chat_gpt/message.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:http/http.dart' as http;
@@ -41,6 +42,7 @@ class MyHomePageState extends State<MyHomePage> {
   int _selectedIndex = 0;
   final PageController _pageController = PageController(initialPage: 0);
   List<Chat> _chats = [];
+  List<String> _latestMessages = [];
   final uuid = const Uuid();
   final TextEditingController _apiController = TextEditingController();
   bool isVisible = false; // for expanding FAB
@@ -54,15 +56,20 @@ class MyHomePageState extends State<MyHomePage> {
     initializeSharedPreferences();
 
     // for expanding FAB
-    scrollController.addListener(() {if (scrollController.position.userScrollDirection == ScrollDirection.reverse) {
-      setState(() {
-        isVisible = false;
-      });
-    }if (scrollController.position.userScrollDirection == ScrollDirection.forward) {
-      setState(() {
-        isVisible = true;
-      });
-    }});
+    scrollController.addListener(() {
+      if (scrollController.position.userScrollDirection ==
+          ScrollDirection.reverse) {
+        setState(() {
+          isVisible = false;
+        });
+      }
+      if (scrollController.position.userScrollDirection ==
+          ScrollDirection.forward) {
+        setState(() {
+          isVisible = true;
+        });
+      }
+    });
   }
 
   // retrieve API key from SharedPreferences
@@ -78,8 +85,18 @@ class MyHomePageState extends State<MyHomePage> {
 
   Future<void> _getChatsFromDatabase() async {
     List<Chat> items = await DatabaseProvider.getChats();
+    List<String> latestMessages = [];
+
+    for (Chat chat in items) {
+      List<Message> messages = await DatabaseProvider.getMessages(chat.id);
+      Message lastMessage = messages.last;
+      lastMessage.sender == "system"
+          ? latestMessages.add('')
+          : latestMessages.add(lastMessage.content);
+    }
     setState(() {
       _chats = items;
+      _latestMessages = latestMessages;
     });
   }
 
@@ -115,58 +132,112 @@ class MyHomePageState extends State<MyHomePage> {
               controller: scrollController,
               itemBuilder: (context, index) {
                 Chat chat = _chats[index];
+                String latestMessage = _latestMessages[index];
 
-                return ListTile(
-                    title: Text(chatTitles[index]),
-                    onTap: () async {
-                      String newTitle = await Navigator.push(
-                          context,
-                          PageRouteBuilder(
-                              pageBuilder: (_, __, ___) => ChatScreen(
-                                  chatId: chat.id,
-                                  apiKey: _apiController.text,
-                                  createdAt: chat.createdAt,
-                                  title: chat.title),
-                              transitionsBuilder: (_,
-                                  Animation<double> animation,
-                                  __,
-                                  Widget child) {
-                                return SlideTransition(
-                                  position: Tween<Offset>(
-                                    begin: const Offset(1.0, 0.0),
-                                    end: Offset.zero,
-                                  ).animate(animation),
-                                  child: child,
-                                );
-                              }));
-                      if (newTitle != chatTitles[index]) {
-                        setState(() {
-                          chatTitles[index] = newTitle;
-                        });
-                      }
-                      await _getChatsFromDatabase();
-                    },
-                    onLongPress: () async {
-                      await DatabaseProvider.deleteChat(chat.id);
-                      if (!mounted) return;
-
-                      setState(() {
-                        _chats.removeAt(index);
-                      });
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: const Text('Item deleted'),
-                        action: SnackBarAction(
-                          label: 'Undo',
-                          onPressed: () async {
+                return latestMessage.isEmpty
+                    ? ListTile(
+                        title: Text(chatTitles[index]),
+                        onTap: () async {
+                          String newTitle = await Navigator.push(
+                              context,
+                              PageRouteBuilder(
+                                  pageBuilder: (_, __, ___) => ChatScreen(
+                                      chatId: chat.id,
+                                      apiKey: _apiController.text,
+                                      createdAt: chat.createdAt,
+                                      title: chat.title),
+                                  transitionsBuilder: (_,
+                                      Animation<double> animation,
+                                      __,
+                                      Widget child) {
+                                    return SlideTransition(
+                                      position: Tween<Offset>(
+                                        begin: const Offset(1.0, 0.0),
+                                        end: Offset.zero,
+                                      ).animate(animation),
+                                      child: child,
+                                    );
+                                  }));
+                          if (newTitle != chatTitles[index]) {
                             setState(() {
-                              _chats.insert(index, chat);
+                              chatTitles[index] = newTitle;
                             });
-                            await DatabaseProvider.addChat(chat);
-                            await _getChatsFromDatabase();
-                          },
-                        ),
-                      ));
-                    });
+                          }
+                          await _getChatsFromDatabase();
+                        },
+                        onLongPress: () async {
+                          await DatabaseProvider.deleteChat(chat.id);
+                          if (!mounted) return;
+
+                          setState(() {
+                            _chats.removeAt(index);
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: const Text('Item deleted'),
+                            action: SnackBarAction(
+                              label: 'Undo',
+                              onPressed: () async {
+                                setState(() {
+                                  _chats.insert(index, chat);
+                                });
+                                await DatabaseProvider.addChat(chat);
+                                await _getChatsFromDatabase();
+                              },
+                            ),
+                          ));
+                        })
+                    : ListTile(
+                        title: Text(chatTitles[index]),
+                        subtitle: Text('ChatGPT: ${_latestMessages[index]}'),
+                        onTap: () async {
+                          String newTitle = await Navigator.push(
+                              context,
+                              PageRouteBuilder(
+                                  pageBuilder: (_, __, ___) => ChatScreen(
+                                      chatId: chat.id,
+                                      apiKey: _apiController.text,
+                                      createdAt: chat.createdAt,
+                                      title: chat.title),
+                                  transitionsBuilder: (_,
+                                      Animation<double> animation,
+                                      __,
+                                      Widget child) {
+                                    return SlideTransition(
+                                      position: Tween<Offset>(
+                                        begin: const Offset(1.0, 0.0),
+                                        end: Offset.zero,
+                                      ).animate(animation),
+                                      child: child,
+                                    );
+                                  }));
+                          if (newTitle != chatTitles[index]) {
+                            setState(() {
+                              chatTitles[index] = newTitle;
+                            });
+                          }
+                          await _getChatsFromDatabase();
+                        },
+                        onLongPress: () async {
+                          await DatabaseProvider.deleteChat(chat.id);
+                          if (!mounted) return;
+
+                          setState(() {
+                            _chats.removeAt(index);
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: const Text('Item deleted'),
+                            action: SnackBarAction(
+                              label: 'Undo',
+                              onPressed: () async {
+                                setState(() {
+                                  _chats.insert(index, chat);
+                                });
+                                await DatabaseProvider.addChat(chat);
+                                await _getChatsFromDatabase();
+                              },
+                            ),
+                          ));
+                        });
               },
             ),
             // Settings page
