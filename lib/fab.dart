@@ -40,7 +40,6 @@ class CustomFabState extends State<CustomFab>
         final newChat = Chat(id: chatId, createdAt: createdAt, title: chatId);
 
         await DatabaseProvider.addChat(newChat);
-        await widget.callback();
         await DatabaseProvider.addMessage(Message(
             id: uuid.v4(),
             content: "You are a helpful assistant.",
@@ -48,6 +47,7 @@ class CustomFabState extends State<CustomFab>
             createdAt: createdAt,
             chatId: chatId,
             messageType: "text"));
+        await widget.callback();
         if (!mounted) return;
 
         Navigator.push(

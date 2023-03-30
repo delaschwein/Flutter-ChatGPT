@@ -174,6 +174,7 @@ class MyHomePageState extends State<MyHomePage> {
                           });
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                             content: const Text('Item deleted'),
+                            showCloseIcon: true,
                             action: SnackBarAction(
                               label: 'Undo',
                               onPressed: () async {
